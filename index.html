@@ -1,13 +1,569 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Badger Brothers Moving — Move Calculator</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Badger Brothers Moving — Move Calculator & Receipt</title>
+
+<script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
+<style>
+:root{--bbm-red:#c8102e;--bbm-red-700:#a60d25;--bbm-red-050:#fff5f6;--ink:#1a1a1a;--muted:#6b7280;--ring:rgba(200,16,46,0.35);--bg:#ffffff;--card:#ffffff;--line:#ececec;--ok:#0b7a3b;--warn:#b45309}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bbm-red-050);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+header{display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10}
+header img{height:48px;width:auto}
+header .brand{display:flex;flex-direction:column}
+header .brand h1{font-size:1.15rem;margin:0;letter-spacing:0.25px;font-weight:800;color:var(--bbm-red)}
+header .brand small{color:var(--muted)}
+.container{max-width:1100px;margin:1.25rem auto;padding:0 1rem 6rem}
+.toolbar{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.badge{background:var(--bbm-red-050);color:var(--bbm-red);border:1px solid var(--bbm-red);padding:.25rem .5rem;border-radius:.5rem;font-weight:600;font-size:.85rem}
+.cards{display:grid;grid-template-columns:1fr;gap:1rem}
+@media(min-width:860px){.cards{grid-template-columns:1fr 1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 0 rgba(0,0,0,0.02),0 12px 30px rgba(200,16,46,0.06)}
+.card header{display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1rem;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fff5f6)}
+.card header h2{margin:0;font-size:1rem;color:var(--bbm-red);font-weight:800;letter-spacing:.2px}
+.card .body{padding:1rem}
+.grid{display:grid;gap:.75rem}
+.grid.two{grid-template-columns:1fr 1fr}
+.grid.three{grid-template-columns:repeat(3,1fr)}
+label{font-size:.83rem;color:var(--muted);display:block;margin-bottom:0.25rem}
+input[type="text"],input[type="email"],input[type="number"],input[type="time"]{width:100%;padding:.6rem .65rem;border:1px solid var(--line);border-radius:10px;background:#fff;outline:none;font-size:.95rem}
+input:focus,select:focus,button:focus{box-shadow:0 0 0 3px var(--ring);border-color:var(--bbm-red)}
+select{width:100%;padding:.6rem .65rem;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:.95rem}
+hr{border:none;border-top:1px solid var(--line);margin:1rem 0}
+.btn{display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--bbm-red);background:var(--bbm-red);color:#fff;padding:.6rem .9rem;border-radius:10px;font-weight:700;cursor:pointer;text-decoration:none}
+.btn.secondary{background:#fff;color:var(--bbm-red)}
+.btn.ghost{border-color:var(--line);background:#fff;color:#111}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.kicker{font-size:.82rem;color:var(--muted)}
+.inline{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.small{font-size:.82rem}
+.chip{background:#fff;border:1px dashed var(--line);padding:.4rem .6rem;border-radius:999px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border-radius:999px;background:#fff;border:1px solid var(--line)}
+.pill strong{color:var(--bbm-red)}
+.right{margin-left:auto}
+.result{background:#fff;border:1px solid var(--line);border-radius:12px;padding:.85rem}
+.result h3{margin:.1rem 0 .5rem 0;font-size:1rem}
+.result .row{display:flex;justify-content:space-between;padding:.25rem 0;font-size:.95rem}
+.result .row + .row{border-top:1px dashed var(--line)}
+.result .em{font-weight:800}
+.notice{font-size:.85rem;color:var(--warn)}
+.ok{color:var(--ok)}
+.footerbar{position:fixed;right:1rem;bottom:1rem;display:flex;gap:.6rem;z-index:99}
+.footerbar .btn{box-shadow:0 8px 24px rgba(200,16,46,.22)}
+.token{display:inline-block;background:#fff;border:1px solid var(--line);padding:.25rem .5rem;border-radius:.5rem;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:.78rem;color:#444}
+.flex{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.minicol{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end}
+.remover{background:#fff;border:1px dashed var(--line);padding:.4rem .6rem;border-radius:8px;color:#444;cursor:pointer}
+.help{color:var(--muted);font-size:.8rem}
+/* duration field visuals */
+input.duration-hm{font-variant-numeric:tabular-nums;letter-spacing:.3px}
+input.duration-hm:invalid{border-color:var(--warn);box-shadow:0 0 0 3px rgba(180,83,9,.15)}
+</style>
 </head>
 <body>
-  <img src="BBMimage.png" alt="Badger Brothers Moving Logo" style="max-width:200px;">
-  <h1>Badger Brothers Moving — Move Calculator</h1>
-  <p>This website hosts the move calculator and receipt generator. Full functionality will be added soon.</p>
+ <header>
+    <img id="brand-logo" src="BBMimage.png" alt="Badger Brothers Moving Logo" />
+    <div class="brand">
+      <h1>Badger Brothers Moving — Hours Worked &amp; Cost-Receipt</h1>
+      <small>Streamlined time and cost calculations.</small>
+    </div>
+    <span class="right badge">Up to 10 Moves</span>
+  </header>
+
+  <div class="container">
+    <div class="toolbar">
+      <div class="flex">
+        <span class="chip">Office: <strong>313 W Beltline Hwy STE 157A, Madison, WI 53713</strong></span>
+        <span class="chip">Card fee: <strong>3.5%</strong></span>
+        <span class="chip">Billing increment: <strong>15 min</strong></span>
+      </div>
+    </div>
+
+    <div id="cards" class="cards"></div>
+  </div>
+
+  <div class="footerbar">
+    <button id="add-move" class="btn">＋ Add another move</button>
+  </div>
+
+  <!-- Template for a move card -->
+  <template id="move-template">
+    <section class="card">
+      <header>
+        <h2>Move <span class="mv-index">1</span></h2>
+        <button class="remover" title="Remove this move" style="display:none">Remove</button>
+      </header>
+      <div class="body">
+        <div class="grid two">
+          <div>
+            <label>Lead</label>
+            <input type="text" class="lead" placeholder="Lead name" />
+          </div>
+          <div>
+            <label>Customer / Client</label>
+            <input type="text" class="client" placeholder="Client name" />
+          </div>
+          <div>
+            <label>Client Email</label>
+            <input type="email" class="client-email" placeholder="name@example.com" />
+          </div>
+          <div>
+            <label>Hourly Rate (team)</label>
+            <input type="number" min="0" step="0.01" class="rate" placeholder="e.g., 189" />
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="grid">
+          <div>
+            <label>Additional Moving Specialist</label>
+            <div class="inline ms-list"></div>
+            <div class="inline">
+              <button class="btn secondary add-ms" type="button">＋ Add MS</button>
+              <span class="help">Add each MS used on move.</span>
+            </div>
+          </div>
+        </div>
+
+        <hr />
+
+<section class="move-return">
+  <div class="form-row">
+    <label for="left-office-time">Left office at (HH:MM)</label>
+    <input id="left-office-time" type="time" class="left-office-time" step="60" />
+  </div>
+
+  <div class="form-row">
+    <label for="duration-hm">Expected travel time from current location to office (HH:MM)</label>
+    <div class="input-with-button">
+      <input id="duration-hm" type="text" class="duration-hm" inputmode="numeric" autocomplete="off"
+             placeholder="HH:MM or minutes" pattern="^(\d+|(\d{1,4}:[0-5]\d))$" value="00:00" />
+      <a class="btn ghost maps-link" target="_blank" rel="noopener">Open Google Maps</a>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label>Auto-computed predicted time of arrival back at office:</label>
+    <div class="pill"><span class="eta">—</span></div>
+  </div>
+</section>
+
+        <hr />
+
+        <div class="grid">
+          <div class="inline">
+            <div>
+              <label>Fuel surcharge</label>
+              <div class="inline">
+                <input type="number" min="0" step="0.01" class="fuel" placeholder="e.g., 25.00" />
+                <button class="btn secondary auto-fuel" type="button">⟲ Auto-calc</button>
+                <span class="help">If BBM opts for stream-lined auto computational fuel charge.</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label>Additional Services</label>
+            <div class="fees"></div>
+            <div class="inline">
+              <button class="btn secondary add-fee" type="button">＋ Add fee</button>
+              <span class="help">E.g., Mattress protection, packing supplies, TV box, etc.</span>
+            </div>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="grid two">
+          <div>
+            <label>Payment method</label>
+            <select class="pay">
+              <option value="other" selected>Cash / Check / ACH</option>
+              <option value="card">Credit / Debit Card (+3.5%)</option>
+            </select>
+          </div>
+          <div>
+            <label>Notes (optional)</label>
+            <input type="text" class="notes" placeholder="Internal notes on job" />
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="inline">
+          <button class="btn calc" type="button">Calculate</button>
+          <button class="btn secondary pdf" type="button" disabled>Download PDF</button>
+          <button class="btn ghost email" type="button" disabled>Email receipt</button>
+          <span class="help">PDF first; “Email receipt” opens a draft to customer + BBM. Attach the PDF.</span>
+        </div>
+
+        <div class="result" style="margin-top:1rem;display:none">
+          <h3>Computed totals</h3>
+          <div class="row"><div>Left office:</div><div class="left-out em">—</div></div>
+          <div class="row"><div>Expected return:</div><div class="return em">—</div></div>
+          <div class="row"><div>Travel duration:</div><div class="travel em">—</div></div>
+          <div class="row"><div>Billed time (rounded 15-min):</div><div class="billed em">—</div></div>
+          <div class="row"><div>Hourly rate:</div><div class="rate-out">—</div></div>
+          <div class="row"><div>Labor subtotal:</div><div class="labor">—</div></div>
+          <div class="row"><div>Fuel surcharge:</div><div class="fuel-out">—</div></div>
+          <div class="row"><div>Additional services:</div><div class="fees-out">—</div></div>
+          <div class="row"><div>Card fee (3.5% if card):</div><div class="cardfee">—</div></div>
+          <div class="row"><div class="em">Total due:</div><div class="total em">—</div></div>
+          <div class="kicker ok done-msg" style="margin-top:.5rem;display:none">Ready — PDF can be generated and emailed.</div>
+          <div class="notice email-warn" style="margin-top:.5rem;display:none">Email attachments cannot be auto-added from a static page. Attach the downloaded PDF in your email client. Optional EmailJS can be configured in CONFIG.</div>
+        </div>
+      </div>
+    </section>
+  </template>
+
+<script>
+/* ===================== CONFIG ===================== */
+const CONFIG = {
+  OFFICE_ADDRESS: "313 W Beltline Hwy STE 157A, Madison, WI 53713",
+  BBM_EMAIL: "BBMEMAIL@example.com",
+  CARD_FEE_PCT: 0.035,
+  BILLING_INCREMENT_MIN: 15,
+  FUEL_SURCHARGE_TYPE: 'fixed', // 'fixed' | 'percent'
+  FUEL_SURCHARGE_VALUE: 25,     // dollars or percent
+  EXTRA_TRUCK_BUFFER_MIN: 0,    // added to travel duration (minutes)
+  ENABLE_EMAILJS: false,
+  EMAILJS_PUBLIC_KEY: "YOUR_EMAILJS_PUBLIC_KEY",
+  EMAILJS_SERVICE_ID: "YOUR_EMAILJS_SERVICE_ID",
+  EMAILJS_TEMPLATE_ID: "YOUR_EMAILJS_TEMPLATE_ID"
+};
+/* ================================================== */
+
+(() => {
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  const nf = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+  const fmtClock = (d) => d ? d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '—';
+  const fmtDate = (d) => d ? d.toLocaleDateString() : '';
+
+  let moveCount = 0;
+  const MAX_MOVES = 10;
+
+  function initEmailJSIfConfigured(){
+    if(!CONFIG.ENABLE_EMAILJS) return;
+    if(!window.emailjs){ console.warn('EmailJS library not loaded.'); return; }
+    if(!CONFIG.EMAILJS_PUBLIC_KEY){ console.warn('EmailJS public key missing.'); return; }
+    emailjs.init(CONFIG.EMAILJS_PUBLIC_KEY);
+  }
+
+  const minutesToMs = (m) => m*60*1000;
+  const ceilTo = (ms, stepMs) => Math.ceil(ms/stepMs)*stepMs;
+  const msToHMin = (ms) => { const totMin = Math.ceil(ms/60000); const h = Math.floor(totMin/60); const m = totMin%60; return {h,m,totMin}; };
+  const pad2 = (n)=>String(n).padStart(2,'0');
+
+  // HH:MM clock → minutes since midnight; NaN if invalid
+  function parseHHMMClock(str){
+    if(!str) return NaN;
+    const m = /^(\d{1,2}):([0-5]\d)$/.exec(str.trim());
+    if(!m) return NaN;
+    return parseInt(m[1],10)*60 + parseInt(m[2],10);
+  }
+
+  // Duration parser: "H+:MM" or bare minutes "m" → total minutes ≥ 0
+  function parseDuration(str){
+    if(!str) return 0;
+    const s = str.trim();
+    if(/^\d+$/.test(s)) return Math.max(0, parseInt(s,10));
+    const m = /^(\d+):([0-5]?\d)$/.exec(s);
+    if(!m) return 0;
+    const h = parseInt(m[1],10), mm = Math.min(59, parseInt(m[2],10));
+    return Math.max(0, h*60 + mm);
+  }
+
+  // Canonicalize duration input to H+:MM
+  function normalizeDurationInput(el){
+    const s = (el.value||'').trim();
+    if(!s) return;
+    if(/^\d+$/.test(s)){ const t = parseInt(s,10); el.value = `${Math.floor(t/60)}:${pad2(t%60)}`; return; }
+    const m = /^(\d+):(\d{1,2})$/.exec(s);
+    if(m){ const h = parseInt(m[1],10), mm = Math.min(59, Math.max(0, parseInt(m[2],10))); el.value = `${h}:${pad2(mm)}`; }
+  }
+
+  function computeFuel(labor){
+    if(CONFIG.FUEL_SURCHARGE_TYPE==='percent') return Math.max(0, (labor||0) * (CONFIG.FUEL_SURCHARGE_VALUE/100));
+    return Math.max(0, Number(CONFIG.FUEL_SURCHARGE_VALUE) || 0);
+  }
+
+  function addMSField(msWrap){
+    const wrap = document.createElement('div'); wrap.className='inline'; wrap.style.marginBottom='.35rem';
+    const input = document.createElement('input'); input.type='text'; input.placeholder='MS name'; input.style.flex='1';
+    const rm = document.createElement('button'); rm.type='button'; rm.className='remover'; rm.textContent='Remove';
+    rm.onclick=()=>wrap.remove(); wrap.appendChild(input); wrap.appendChild(rm); msWrap.appendChild(wrap);
+  }
+
+  function addFeeRow(feesWrap){
+    const row = document.createElement('div'); row.className='grid two'; row.style.alignItems='end'; row.style.marginBottom='.5rem';
+    row.innerHTML = `
+      <div><input type="text" class="fee-label" placeholder="Fee label (e.g., Packing)"></div>
+      <div class="minicol">
+        <input type="number" class="fee-amt" min="0" step="0.01" placeholder="Amount">
+        <button type="button" class="remover">Remove</button>
+      </div>`;
+    $('.remover', row).onclick=()=>row.remove(); feesWrap.appendChild(row);
+  }
+
+  function preferredTravelMinutes(card){
+    const dur = parseDuration($('.duration-hm', card).value);
+    const buff = Number(CONFIG.EXTRA_TRUCK_BUFFER_MIN)||0;
+    return Math.max(0, dur + buff);
+  }
+
+  function updateETA(card){
+    const mins = preferredTravelMinutes(card);
+    const now = new Date();
+    const eta = mins>0 ? new Date(now.getTime() + minutesToMs(Math.ceil(mins))) : null;
+    $('.eta', card).textContent = eta ? fmtClock(eta) : '—';
+  }
+
+  function collectInputs(card){
+    const lead = $('.lead',card).value.trim();
+    const client = $('.client',card).value.trim();
+    const clientEmail = $('.client-email',card).value.trim();
+    const rate = Number($('.rate',card).value || 0);
+    const leftStr = $('.left-office-time',card).value;
+    const leftMin = parseHHMMClock(leftStr);
+    const travelMin = preferredTravelMinutes(card);
+    const notes = $('.notes',card).value.trim();
+    const pay = $('.pay',card).value;
+    const ms = $$('.ms-list input',card).map(x=>x.value.trim()).filter(Boolean);
+
+    const fees = [];
+    $$('.fees .grid.two',card).forEach(row=>{
+      const label = $('.fee-label',row)?.value?.trim();
+      const amt = Number($('.fee-amt',row)?.value || 0);
+      if(label && amt>0) fees.push({label, amount: amt});
+    });
+
+    const fuelInput = Number($('.fuel',card).value || 0);
+    return {lead, client, clientEmail, rate, leftMin, travelMin, notes, pay, ms, fees, fuelInput};
+  }
+
+  function calculate(card){
+    const out = { ok:false, msg:'', left:null, returnAt:null, travelMin:0, billedMs:0, billedH:0, labor:0, fuel:0, feesSum:0, cardFee:0, total:0, crossedMidnight:false };
+
+    const { lead, client, clientEmail, rate, leftMin, travelMin, notes, pay, ms, fees, fuelInput } = collectInputs(card);
+    if(!(leftMin>0 || leftMin===0)){ out.msg='“Left office at” required'; return out; }
+    if(rate<=0){ out.msg='Hourly rate required'; return out; }
+
+    const today = new Date();
+    const left = new Date(today.getFullYear(), today.getMonth(), today.getDate(), Math.floor(leftMin/60), leftMin%60, 0, 0);
+    const now = new Date();
+    const travel = Math.max(0, Math.ceil(Number(travelMin)||0));
+
+    const retCandidate = new Date(now.getTime() + minutesToMs(travel)); // now + duration
+    let rawMs = retCandidate.getTime() - left.getTime();
+
+    let retForBilling = retCandidate;
+    if(rawMs < 0){ retForBilling = new Date(retCandidate.getTime() + minutesToMs(24*60)); rawMs = retForBilling.getTime() - left.getTime(); }
+
+    const step = minutesToMs(CONFIG.BILLING_INCREMENT_MIN);
+    const billedMs = ceilTo(rawMs, step);
+    const billedH = billedMs/3600000;
+    const labor = billedH * rate;
+    const fuel = (fuelInput>0) ? fuelInput : computeFuel(labor);
+    const feesSum = fees.reduce((a,b)=>a+(Number(b.amount)||0),0);
+    const subtotal = labor + fuel + feesSum;
+    const cardFee = (pay==='card') ? subtotal*CONFIG.CARD_FEE_PCT : 0;
+    const total = subtotal + cardFee;
+    const crossedMidnight = retForBilling.getDate() !== left.getDate();
+
+    Object.assign(out, { ok:true, left, returnAt:retCandidate, travelMin:travel, billedMs, billedH, labor, fuel, feesSum, cardFee, total, lead, client, clientEmail, rate, notes, pay, ms, fees, crossedMidnight });
+    return out;
+  }
+
+  function renderResult(card, res){
+    const wrap = $('.result',card);
+    if(!res.ok){
+      wrap.style.display='block'; $('.done-msg',wrap).style.display='none'; $('.email-warn',wrap).style.display='none';
+      $('.left-out',wrap).textContent='—'; $('.return',wrap).textContent='—'; $('.travel',wrap).textContent='—';
+      $('.billed',wrap).textContent=res.msg || 'Incomplete inputs';
+      $('.rate-out',wrap).textContent='—'; $('.labor',wrap).textContent='—'; $('.fuel-out',wrap).textContent='—';
+      $('.fees-out',wrap).textContent='—'; $('.cardfee',wrap).textContent='—'; $('.total',wrap).textContent='—';
+      return;
+    }
+    const {left, returnAt, travelMin, billedMs, rate, labor, fuel, feesSum, cardFee, total, pay, crossedMidnight} = res;
+    const t = msToHMin(billedMs);
+    wrap.style.display='block';
+    $('.left-out',wrap).textContent = fmtClock(left);
+    $('.return',wrap).textContent = fmtClock(returnAt) + (crossedMidnight ? ' (next day)' : '');
+    $('.travel',wrap).textContent = `${Math.floor(travelMin/60)} hr ${travelMin%60} min`;
+    $('.billed',wrap).textContent = `${t.h} hr ${t.m} min`;
+    $('.rate-out',wrap).textContent = nf.format(rate) + ' / hr';
+    $('.labor',wrap).textContent = nf.format(labor);
+    $('.fuel-out',wrap).textContent = nf.format(fuel);
+    $('.fees-out',wrap).textContent = nf.format(feesSum);
+    $('.cardfee',wrap).textContent = (pay==='card') ? nf.format(cardFee) : nf.format(0);
+    $('.total',wrap).textContent = nf.format(total);
+    $('.done-msg',wrap).style.display='block';
+    $('.email-warn',wrap).style.display= CONFIG.ENABLE_EMAILJS ? 'none':'block';
+  }
+
+  async function generatePDF(card, res){
+    if(!window.jspdf || !window.jspdf.jsPDF){ alert('PDF engine not loaded.'); return null; }
+    const doc = new jspdf.jsPDF({unit:'pt',format:'letter'});
+
+    const padX = 40, padY = 40, lineH = 18;
+    let y = padY;
+
+    try{
+      const img = document.getElementById('brand-logo');
+      if(img && img.complete){ doc.addImage(img, 'PNG', padX, y, 120, 48); }
+    }catch(e){}
+
+    doc.setFont('Helvetica','bold'); doc.setFontSize(16);
+    doc.text('Badger Brothers Moving — Receipt', padX, y+=70);
+    doc.setFont('Helvetica',''); doc.setFontSize(10);
+    doc.text(CONFIG.OFFICE_ADDRESS, padX, y+=lineH);
+    doc.text(`Receipt date: ${fmtDate(new Date())}`, padX, y+=lineH);
+    y += 10;
+
+    const section = (title) => { doc.setFont('Helvetica','bold'); doc.setFontSize(12); doc.text(title, padX, y+=lineH); doc.setFont('Helvetica',''); doc.setFontSize(11); };
+
+    section(`Job Summary (Move ${$('.mv-index',card).textContent})`);
+    doc.text(`Lead: ${res.lead || '—'}`, padX, y+=lineH);
+    doc.text(`Movers: ${res.ms && res.ms.length ? res.ms.join(', ') : '—'}`, padX, y+=lineH);
+    doc.text(`Client: ${res.client || '—'}`, padX, y+=lineH);
+    doc.text(`Client Email: ${res.clientEmail || '—'}`, padX, y+=lineH);
+    doc.text(`Notes: ${res.notes || '—'}`, padX, y+=lineH);
+    y += 10;
+
+    section('Timing');
+    const billed = msToHMin(res.billedMs);
+    doc.text(`Left office: ${fmtClock(res.left)}`, padX, y+=lineH);
+    doc.text(`Expected return: ${fmtClock(res.returnAt)}${res.crossedMidnight?' (next day)':''}`, padX, y+=lineH);
+    doc.text(`Travel duration: ${Math.floor(res.travelMin/60)} hr ${res.travelMin%60} min`, padX, y+=lineH);
+    doc.text(`Billed time (15-min rounding): ${billed.h} hr ${billed.m} min`, padX, y+=lineH);
+    y += 10;
+
+    section('Charges');
+    doc.text(`Hourly rate: ${nf.format(res.rate)} / hr`, padX, y+=lineH);
+    doc.text(`Labor subtotal: ${nf.format(res.labor)}`, padX, y+=lineH);
+    doc.text(`Fuel surcharge: ${nf.format(res.fuel)}`, padX, y+=lineH);
+    if(res.fees && res.fees.length){ res.fees.forEach(f=>{ doc.text(`Fee — ${f.label}: ${nf.format(Number(f.amount)||0)}`, padX, y+=lineH); }); }
+    else { doc.text(`Additional Services: ${nf.format(0)}`, padX, y+=lineH); }
+    doc.text(`Payment method: ${res.pay==='card'?'Card (+3.5%)':'Non-card'}`, padX, y+=lineH);
+    doc.text(`Card fee: ${nf.format(res.cardFee)}`, padX, y+=lineH+4);
+    doc.setFont('Helvetica','bold'); doc.text(`TOTAL DUE: ${nf.format(res.total)}`, padX, y+=lineH);
+    doc.setFont('Helvetica',''); doc.setFontSize(10);
+    doc.text(`Billed in 15-minute increments.`, padX, y+=lineH);
+
+    const fname = `BBM_Receipt_Move${$('.mv-index',card).textContent}_${(new Date()).toISOString().slice(0,10)}.pdf`;
+    doc.save(fname);
+
+    try{ const dataUri = doc.output('datauristring'); return { filename: fname, dataUri }; }
+    catch(e){ return null; }
+  }
+
+  function emailReceipt(card, res, pdf){
+    const recipients = [];
+    if(res.clientEmail) recipients.push(res.clientEmail);
+    if(CONFIG.BBM_EMAIL) recipients.push(CONFIG.BBM_EMAIL);
+
+    const subject = `BBM Receipt — ${res.client || 'Customer'} — ${new Date().toLocaleDateString()}`;
+    const lines = [];
+    lines.push(`Client: ${res.client || '—'}`);
+    lines.push(`Lead: ${res.lead || '—'}`);
+    const bh = msToHMin(res.billedMs); lines.push(`Billed time: ${bh.h} hr ${bh.m} min`);
+    lines.push(`Total due: ${nf.format(res.total)}`);
+    lines.push(`Payment method: ${res.pay==='card'?'Card (+3.5%)':'Non-card'}`);
+    lines.push(`(Attach the PDF receipt to this email.)`);
+    const body = encodeURIComponent(lines.join('\n'));
+
+    if(CONFIG.ENABLE_EMAILJS && window.emailjs && CONFIG.EMAILJS_SERVICE_ID && CONFIG.EMAILJS_TEMPLATE_ID){
+      const params = { to_emails: recipients.join(','), subject, message: lines.join('\n'), pdf_filename: pdf?.filename || '', pdf_data_uri: pdf?.dataUri || '' };
+      emailjs.send(CONFIG.EMAILJS_SERVICE_ID, CONFIG.EMAILJS_TEMPLATE_ID, params)
+        .then(()=> alert('EmailJS: Sent (check your service/template).'))
+        .catch(()=> { window.location.href = `mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent(subject)}&body=${body}`; });
+      return;
+    }
+
+    window.location.href = `mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent(subject)}&body=${body}`;
+  }
+
+  function wireCard(card){
+    const msWrap = $('.ms-list',card);
+    $('.add-ms',card).onclick=()=>addMSField(msWrap);
+    addMSField(msWrap);
+
+    const feesWrap = $('.fees',card);
+    $('.add-fee',card).onclick=()=>addFeeRow(feesWrap);
+
+    $('.auto-fuel',card).onclick=()=>{
+      const probe = calculate(card);
+      const amt = probe.ok ? computeFuel(probe.labor) : computeFuel(0);
+      $('.fuel',card).value = amt.toFixed(2);
+    };
+
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent('Current Location')}&destination=${encodeURIComponent(CONFIG.OFFICE_ADDRESS)}&travelmode=driving`;
+    $('.maps-link',card).href = mapsUrl;
+
+    const now = new Date();
+    $('.left-office-time',card).value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const durEl = $('.duration-hm',card); durEl.value = '00:00';
+
+    durEl.addEventListener('input', ()=>updateETA(card));
+    durEl.addEventListener('blur', ()=>{ normalizeDurationInput(durEl); updateETA(card); });
+    durEl.addEventListener('change', ()=>{ normalizeDurationInput(durEl); updateETA(card); });
+    updateETA(card);
+
+    const calcBtn = $('.calc',card);
+    const pdfBtn  = $('.pdf',card);
+    const emailBtn= $('.email',card);
+
+    calcBtn.onclick = ()=>{
+      updateETA(card);
+      const res = calculate(card);
+      renderResult(card, res);
+      const ok = !!res.ok;
+      pdfBtn.disabled = !ok; emailBtn.disabled = !ok; card._lastResult = res;
+    };
+
+    pdfBtn.onclick = async ()=>{
+      const res = card._lastResult || calculate(card);
+      if(!res.ok){ alert('Fill required fields then Calculate.'); return; }
+      const pdf = await generatePDF(card, res);
+      card._lastPDF = pdf;
+    };
+
+    emailBtn.onclick = ()=>{
+      const res = card._lastResult || calculate(card);
+      if(!res.ok){ alert('Fill required fields then Calculate.'); return; }
+      emailReceipt(card, res, card._lastPDF);
+    };
+  }
+
+  function addMoveCard(){
+    if(moveCount>=10){ alert('Move limit reached (10).'); return; }
+    moveCount += 1;
+    const frag = document.importNode($('#move-template').content, true);
+    const card = frag.firstElementChild;
+    $('.mv-index',card).textContent = String(moveCount);
+    if(moveCount>1){
+      const rm = $('.remover',card);
+      rm.style.display='inline-block';
+      rm.onclick = ()=>{ card.remove(); renumber(); moveCount = $$('#cards .card').length; };
+    }
+    $('#cards').appendChild(card);
+    wireCard(card);
+    return card;
+  }
+
+  function renumber(){ $$('#cards .card').forEach((card,i)=>$('.mv-index',card).textContent=String(i+1)); }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    initEmailJSIfConfigured();
+    addMoveCard();
+    $('#add-move').onclick=()=>addMoveCard();
+  });
+})();
+</script>
 </body>
 </html>
